@@ -12,7 +12,7 @@ var consoleLog = function(x){
 
 function NodePreGypGithub() {}
 const { Octokit } = require("@octokit/rest");
-NodePreGypGithub.prototype.octokit = new Octokit();
+NodePreGypGithub.prototype.octokit = Octokit;
 NodePreGypGithub.prototype.stage_dir = path.join(cwd,"build","stage");
 NodePreGypGithub.prototype.init = function() {
 	var ownerRepo, hostPrefix;
@@ -41,7 +41,7 @@ NodePreGypGithub.prototype.init = function() {
 		throw new Error('binary.host in package.json should begin with: "' + hostPrefix + '"');
 	}
 
-  this.octokit = NodePreGypGithub.prototype.octokit({
+  this.octokit = new NodePreGypGithub.prototype.octokit({
     baseUrl: 'https://' + this.host,
     headers: {
       "user-agent": (this.package_json.name) ? this.package_json.name : "node-pre-gyp-github"
