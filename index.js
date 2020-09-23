@@ -11,7 +11,8 @@ var consoleLog = function(x){
 };
 
 function NodePreGypGithub() {}
-NodePreGypGithub.prototype.octokit = require("@octokit/rest");
+const { Octokit } = require("@octokit/rest");
+NodePreGypGithub.prototype.octokit = Octokit;
 NodePreGypGithub.prototype.stage_dir = path.join(cwd,"build","stage");
 NodePreGypGithub.prototype.init = function() {
 	var ownerRepo, hostPrefix;
