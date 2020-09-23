@@ -75,13 +75,13 @@ NodePreGypGithub.prototype.createRelease = function(args, callback) {
 			options[key] = args[key];
 		}
 	});
-	this.octokit.authenticate(this.authenticate_settings());
+	this.octokit.auth(this.authenticate_settings());
 	this.octokit.repos.createRelease(options, callback);
 };
 
-NodePreGypGithub.prototype.uploadAsset = function(cfg){
-	this.octokit.authenticate(this.authenticate_settings());
-	this.octokit.repos.uploadAsset({
+NodePreGypGithub.prototype.uploadReleaseAsset = function(cfg){
+	this.octokit.auth(this.authenticate_settings());
+	this.octokit.repos.uploadReleaseAsset({
     url: this.release.upload_url,
 		owner: this.owner,
 		id: this.release.id,
@@ -96,14 +96,13 @@ NodePreGypGithub.prototype.uploadAsset = function(cfg){
 	}.bind(this));
 };
 
-NodePreGypGithub.prototype.uploadAssets = function(){
+NodePreGypGithub.prototype.uploadReleaseAssets = function(){
 	var asset;
 	consoleLog("Stage directory path: " + path.join(this.stage_dir));
 	fs.readdir(path.join(this.stage_dir), function(err, files){
 		if(err) throw err;
-		
 		if(!files.length) throw new Error('No files found within the stage directory: ' + this.stage_dir);
-		
+
 		files.forEach(function(file){
       if(this.release && this.release.assets) {
 			  asset = this.release.assets.filter(function(element, index, array){
@@ -114,7 +113,7 @@ NodePreGypGithub.prototype.uploadAssets = function(){
 			  }
       }
 			consoleLog("Staged file " + file + " found. Proceeding to upload it.");
-			this.uploadAsset({
+			this.uploadReleaseAsset({
 				fileName: file,
 				filePath: path.join(this.stage_dir, file)
 			});
@@ -126,8 +125,8 @@ NodePreGypGithub.prototype.publish = function(options) {
 	options = (typeof options === 'undefined') ? {} : options;
 	verbose = (typeof options.verbose === 'undefined' || options.verbose) ? true : false;
 	this.init();
-	this.octokit.authenticate(this.authenticate_settings());
-	this.octokit.repos.getReleases({
+	this.octokit.auth(this.authenticate_settings());
+	this.octokit.repos.listReleases({
 		'owner': this.owner,
 		'repo': this.repo
 	}, function(err, data){
@@ -155,12 +154,12 @@ NodePreGypGithub.prototype.publish = function(options) {
 				else {
 					consoleLog('Release ' + release.tag_name + " not found, so a new release was created and published.");
 				}
-				this.uploadAssets(this.release.upload_url);
+				this.uploadReleaseAssets(this.release.upload_url);
 			}.bind(this));
 		}
 		else {
       this.release = release[0];
-			this.uploadAssets();
+			this.uploadReleaseAssets();
 		}
 	}.bind(this));
 };

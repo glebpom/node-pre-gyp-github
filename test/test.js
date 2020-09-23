@@ -5,8 +5,8 @@ var fs = require("fs");
 var Index = require('../index.js');
 var index = new Index();
 var stage_dir = index.stage_dir;
-var Octokit = require("@octokit/rest");
-var octokit = Octokit();
+const { Octokit } = require("@octokit/rest");
+var octokit = new Octokit();
 var sinon = require('sinon')
 var reset_index = function(index_string_ref) {
 	delete require.cache[require.resolve(index_string_ref)];
@@ -22,14 +22,14 @@ var reset_mocks = function() {
 	fs.readFileSync = function(){return '{"name":"test","version":"0.0.1","repository": {"url":"git+https://github.com/test/test.git"},"binary":{"host":"https://github.com/test/test/releases/download/","remote_path":"{version}"}}';};
 	index.stage_dir = stage_dir;
 	Index.prototype.octokit = function() {return octokit;};
-	sandbox.stub(octokit, 'authenticate');
-	sandbox.stub(octokit.repos, 'getReleases').callsFake(function(options, cb){
+	sandbox.stub(octokit, 'auth');
+	sandbox.stub(octokit.repos, 'listReleases').callsFake(function(options, cb){
 		cb(null, {data: [{"tag_name":"0.0.0","assets":[{"name":"filename"}]}]});
 	});
 	sandbox.stub(octokit.repos, 'createRelease').callsFake(function(options, cb){
 		cb(null,{data: {"tag_name":"0.0.1","draft":true,"assets":[{}]}});
 	});
-	sandbox.stub(octokit.repos, 'uploadAsset').callsFake(function(cfg,cb){cb();});
+	sandbox.stub(octokit.repos, 'uploadReleaseAsset').callsFake(function(cfg,cb){cb();});
 };
 
 if(!process.env.COVERALLS_SERVICE_NAME) console.log('To post to coveralls.io, be sure to set COVERALLS_SERVICE_NAME environment variable');
@@ -56,7 +56,7 @@ describe("Publishes packages to GitHub Releases", function() {
 			expect(function(){ index.publish({'draft': true, 'verbose': true}); }).to.not.throw();
 			
 			// testing scenario when a release does not already exist
-			octokit.repos.getReleases = function(options, cb){
+			octokit.repos.listReleases = function(options, cb){
 				cb(null,{data: []});
 			};
 			octokit.repos.createRelease = function(options, cb){
@@ -114,21 +114,21 @@ describe("Publishes packages to GitHub Releases", function() {
 			expect(function(){ index.publish(options); }).to.throw("NODE_PRE_GYP_GITHUB_TOKEN environment variable not found");
 		});
 		
-		it("should throw an error when octokit.repos.getReleases returns an error", function() {
+		it("should throw an error when octokit.repos.listReleases returns an error", function() {
 			var options = {'draft': true, 'verbose': false};
 			reset_mocks();
       
-			octokit.repos.getReleases.restore();
-      		sandbox.stub(octokit.repos, 'getReleases').callsFake(function(options, cb){
-				cb(new Error('getReleases error'));
+			octokit.repos.listReleases.restore();
+      		sandbox.stub(octokit.repos, 'listReleases').callsFake(function(options, cb){
+				cb(new Error('listReleases error'));
 			});
-			expect(function(){ index.publish(options); }).to.throw('getReleases error');
+			expect(function(){ index.publish(options); }).to.throw('listReleases error');
 		});
 		
 		it("should throw an error when octokit.repos.createRelease returns an error", function() {
 			var options = {'draft': true, 'verbose': false};
 			reset_mocks();
-			octokit.repos.getReleases = function(options, cb){
+			octokit.repos.listReleases = function(options, cb){
 				cb(null,{data: []});
 			};
 			octokit.repos.createRelease = function(options, cb){
@@ -161,22 +161,22 @@ describe("Publishes packages to GitHub Releases", function() {
 			fs.readdir = function(filename, cb) {
 				cb(null,["filename"]);
 			};
-			octokit.repos.getReleases = function(options, cb){
+			octokit.repos.listReleases = function(options, cb){
 				cb(null, {data: [{"tag_name":"0.0.1","assets":[{"name":"filename"}]}]});
 			};
 			expect(function(){ index.publish(options); }).to.throw(/^Staged file .* found but it already exists in release .*. If you would like to replace it, you must first manually delete it within GitHub./i);
 		});
 		
-		it("should throw an error when github.releases.uploadAsset returns an error", function() {
+		it("should throw an error when github.releases.uploadReleaseAsset returns an error", function() {
 			var options = {'draft': true, 'verbose': false};
 			reset_mocks();
 			fs.readdir = function(filename, cb) {
 				cb(null,["filename"]);
 			};
-			octokit.repos.uploadAsset = function(cfg,cb){
-				cb(new Error('uploadAsset error')); 
+			octokit.repos.uploadReleaseAsset = function(cfg,cb){
+				cb(new Error('uploadReleaseAsset error'));
 			};
-			expect(function(){ index.publish(options); }).to.throw("uploadAsset error");
+			expect(function(){ index.publish(options); }).to.throw("uploadReleaseAsset error");
 		});
 		
 	});
